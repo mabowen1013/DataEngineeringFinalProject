@@ -1,3 +1,5 @@
+# 目前其实已经把architecture plan一直到phase3都做完了。你们可以本地部署看看。
+
 # Real-time Trade Analysis Pipeline
 
 Finnhub real-time trade stream + company news data pipeline, orchestrated by Apache Airflow.
