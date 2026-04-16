@@ -1,0 +1,159 @@
+# Author: Bowen Ma
+# Real-time Trade Analysis Pipeline - Local Development Environment
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.4-python3.11
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    # Connections for our pipeline
+    AIRFLOW__CONNECTIONS__PIPELINE_POSTGRES: postgresql://pipeline:pipeline@postgres:5432/trade_pipeline
+    # Minio / S3 connection
+    AWS_ACCESS_KEY_ID: minioadmin
+    AWS_SECRET_ACCESS_KEY: minioadmin
+    MINIO_ENDPOINT: http://minio:9000
+    S3_BUCKET: trade-pipeline
+    # Finnhub
+    FINNHUB_API_KEY: ${FINNHUB_API_KEY:-your_api_key_here}
+    TRADE_SYMBOLS: "AAPL,MSFT,AMZN"
+    # Pipeline database
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_NAME: trade_pipeline
+    DB_USER: pipeline
+    DB_PASSWORD: pipeline
+    # Install extra Python packages in Airflow containers
+    _PIP_ADDITIONAL_REQUIREMENTS: "boto3==1.34.0 requests==2.31.0"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./config:/opt/airflow/config
+    - airflow_logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+
+services:
+  # ==================== Postgres ====================
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== Minio (S3-compatible) ====================
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Create default bucket on startup
+  minio-init:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minioadmin minioadmin;
+      mc mb local/trade-pipeline --ignore-existing;
+      mc mb local/trade-pipeline/raw/trades --ignore-existing;
+      mc mb local/trade-pipeline/raw/news --ignore-existing;
+      echo 'Minio buckets created';
+      "
+
+  # ==================== Airflow ====================
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com || true
+        echo "Airflow init complete"
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  # ==================== Trade Ingestion Service ====================
+  trade-ingestion:
+    build: ./services/trade_ingestion
+    environment:
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY:-your_api_key_here}
+      TRADE_SYMBOLS: "AAPL,MSFT,AMZN"
+      FLUSH_INTERVAL: "60"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: trade_pipeline
+      DB_USER: pipeline
+      DB_PASSWORD: pipeline
+      MINIO_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      S3_BUCKET: trade-pipeline
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  postgres_data:
+  minio_data:
+  airflow_logs:

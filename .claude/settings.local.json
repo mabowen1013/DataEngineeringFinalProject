@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(python *)",
+      "WebFetch(domain:finnhub.io)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(docker exec final_project-postgres-1 *)",
+      "Bash(docker exec *)",
+      "Bash(iconv -f UTF-16 -t UTF-8 .env)"
+    ]
+  }
+}

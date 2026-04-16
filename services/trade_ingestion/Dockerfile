@@ -1,0 +1,12 @@
+# Author: Bowen Ma
+# Trade Ingestion Service - Docker image
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY main.py .
+
+CMD ["python", "-u", "main.py"]
