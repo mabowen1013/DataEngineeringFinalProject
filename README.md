@@ -1,3 +1,5 @@
+# 目前其实已经把architecture plan一直到phase3都做完了。你们可以本地部署看看。
+
 # Real-time Trade Analysis Pipeline
 
 Finnhub real-time trade stream + company news data pipeline, orchestrated by Apache Airflow.
@@ -80,23 +82,23 @@ All services should show `Up` / `healthy`:
 
 **Check trades are being ingested:**
 ```bash
-docker exec final_project-postgres-1 psql -U pipeline -d trade_pipeline \
+docker compose exec postgres psql -U pipeline -d trade_pipeline \
   -c "SELECT symbol, COUNT(*) FROM raw_trades GROUP BY symbol;"
 ```
 
 **Trigger news ingestion manually:**
 ```bash
-docker exec final_project-airflow-webserver-1 airflow dags trigger news_ingestion
+docker compose exec airflow-webserver airflow dags trigger news_ingestion
 ```
 
 **Trigger data curation manually:**
 ```bash
-docker exec final_project-airflow-webserver-1 airflow dags trigger data_curation
+docker compose exec airflow-webserver airflow dags trigger data_curation
 ```
 
 **Check curated data:**
 ```bash
-docker exec final_project-postgres-1 psql -U pipeline -d trade_pipeline \
+docker compose exec postgres psql -U pipeline -d trade_pipeline \
   -c "SELECT symbol, event_date, news_count, trade_count FROM company_events;"
 ```
 
