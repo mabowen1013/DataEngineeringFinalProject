@@ -1,0 +1,38 @@
+# Author: Bowen Ma
+# One-time job to initialize Airflow DB and create admin user
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: airflow-init
+  namespace: trade-pipeline
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: airflow-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: airflow-init
+          image: apache/airflow:2.8.4-python3.11
+          command:
+            - /bin/bash
+            - -c
+            - |
+              airflow db migrate
+              airflow users create \
+                --username admin \
+                --password admin \
+                --firstname Admin \
+                --lastname User \
+                --role Admin \
+                --email admin@example.com || true
+              echo "Airflow init complete"
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: "LocalExecutor"
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              value: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
+            - name: AIRFLOW__CORE__LOAD_EXAMPLES
+              value: "false"

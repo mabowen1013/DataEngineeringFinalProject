@@ -1,0 +1,8 @@
+# Author: Bowen Ma
+# Namespace for the trade analysis pipeline
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trade-pipeline
+  labels:
+    app: trade-pipeline

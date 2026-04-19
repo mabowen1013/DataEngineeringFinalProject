@@ -1,0 +1,31 @@
+# Author: Bowen Ma
+# Pipeline configuration — centralized parameters
+# These values are also mirrored in k8s/configmaps/pipeline-config.yaml
+# for K8s deployment. Keep both in sync when modifying.
+
+# Tracked stock symbols
+symbols:
+  - AAPL
+  - MSFT
+  - AMZN
+
+# Trade ingestion
+trade_ingestion:
+  flush_interval_seconds: 60
+
+# News ingestion
+news_ingestion:
+  lookback_days: 2
+  schedule: "*/30 * * * *"
+
+# Data curation
+curation:
+  summary_window_minutes: 5
+  pre_window_minutes: 15
+  post_window_minutes: 60
+  schedule: "0 * * * *"
+
+# Health check
+health_check:
+  stale_threshold_minutes: 10
+  schedule: "*/5 * * * *"

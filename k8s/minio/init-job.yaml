@@ -1,0 +1,43 @@
+# Author: Bowen Ma
+# One-time job to create the default S3 bucket in Minio
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: trade-pipeline
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: minio-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Wait for Minio to be ready
+              until mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+                echo "Waiting for Minio..."
+                sleep 3
+              done
+              # Create buckets
+              mc mb local/trade-pipeline --ignore-existing
+              mc mb local/trade-pipeline/raw/trades --ignore-existing
+              mc mb local/trade-pipeline/raw/news --ignore-existing
+              echo "Minio buckets created successfully"
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pipeline-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pipeline-secrets
+                  key: MINIO_ROOT_PASSWORD

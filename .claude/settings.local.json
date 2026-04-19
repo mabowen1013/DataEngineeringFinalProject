@@ -9,7 +9,24 @@
       "Bash(docker compose *)",
       "Bash(docker exec final_project-postgres-1 *)",
       "Bash(docker exec *)",
-      "Bash(iconv -f UTF-16 -t UTF-8 .env)"
+      "Bash(iconv -f UTF-16 -t UTF-8 .env)",
+      "Bash(chmod +x *)",
+      "Bash(k3d --version)",
+      "Bash(kubectl version *)",
+      "Bash(brew install *)",
+      "Bash(k3d cluster *)",
+      "Bash(kubectl get nodes *)",
+      "Bash(./k8s/deploy.sh *)",
+      "Bash(kubectl logs *)",
+      "Bash(kubectl exec *)",
+      "Bash(kubectl apply *)",
+      "Bash(kubectl rollout *)",
+      "Bash(kubectl get pods *)",
+      "Bash(docker info *)",
+      "Bash(kubectl delete pod *)",
+      "Bash(kubectl wait *)",
+      "Bash(kubectl get *)",
+      "Bash(kubectl config *)"
     ]
   }
 }

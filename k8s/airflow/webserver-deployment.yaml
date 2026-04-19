@@ -1,0 +1,97 @@
+# Author: Bowen Ma
+# Airflow Webserver — provides the DAG management UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+  namespace: trade-pipeline
+  labels:
+    app: airflow-webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-webserver
+  template:
+    metadata:
+      labels:
+        app: airflow-webserver
+    spec:
+      initContainers:
+        # Copy DAGs from ConfigMap to a regular directory
+        # (ConfigMap mounts create symlinks that confuse Airflow's DAG scanner)
+        - name: copy-dags
+          image: busybox
+          command: ["sh", "-c", "cp /dags-cm/*.py /dags/"]
+          volumeMounts:
+            - name: dags-configmap
+              mountPath: /dags-cm
+            - name: dags
+              mountPath: /dags
+      containers:
+        - name: webserver
+          image: apache/airflow:2.8.4-python3.11
+          command: ["airflow", "webserver"]
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: pipeline-config
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: "LocalExecutor"
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              value: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
+            - name: AIRFLOW__CORE__FERNET_KEY
+              value: ""
+            - name: AIRFLOW__CORE__LOAD_EXAMPLES
+              value: "false"
+            - name: AIRFLOW__CORE__DAGS_FOLDER
+              value: "/opt/airflow/dags"
+            - name: FINNHUB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pipeline-secrets
+                  key: FINNHUB_API_KEY
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pipeline-secrets
+                  key: DB_PASSWORD
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pipeline-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: _PIP_ADDITIONAL_REQUIREMENTS
+              value: "boto3==1.34.0 requests==2.31.0"
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 60
+            timeoutSeconds: 10
+      volumes:
+        - name: dags-configmap
+          configMap:
+            name: airflow-dags
+        - name: dags
+          emptyDir: {}

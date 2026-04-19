@@ -1,0 +1,27 @@
+# Author: Bowen Ma
+# Shared configuration for all pipeline components
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pipeline-config
+  namespace: trade-pipeline
+data:
+  # Tracked stock symbols
+  TRADE_SYMBOLS: "AAPL,MSFT,AMZN"
+  # Trade ingestion flush interval (seconds)
+  FLUSH_INTERVAL: "60"
+  # Postgres connection
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "trade_pipeline"
+  DB_USER: "pipeline"
+  # Minio / S3
+  MINIO_ENDPOINT: "http://minio:9000"
+  S3_BUCKET: "trade-pipeline"
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  # Curation window sizes (minutes)
+  PRE_WINDOW_MINUTES: "15"
+  POST_WINDOW_MINUTES: "60"
+  SUMMARY_WINDOW_MINUTES: "5"
+  # Health check threshold
+  STALE_THRESHOLD_MINUTES: "10"

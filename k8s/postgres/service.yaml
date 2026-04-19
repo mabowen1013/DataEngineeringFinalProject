@@ -1,0 +1,17 @@
+# Author: Bowen Ma
+# Postgres ClusterIP service — internal access only
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: trade-pipeline
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
